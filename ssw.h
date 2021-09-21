@@ -1,12 +1,10 @@
 #ifndef ssw_h__
 #define ssw_h__
 
-#include <stdbool.h>
-
 extern struct cache {
 char t;
-char txt[2];
 char b;
+int txt;
 int x;
 int y;
 };
@@ -15,7 +13,7 @@ extern unsigned long LHEX(char v[7]); /* These could be regular longs */
 extern unsigned long HEX(char v[7]);  /* but don't want to change now */
 extern unsigned long RGB(int r, int g, int b);
 
-extern void XI(bool root, const char *title, const char *subtitle, int height, int width, int sx, int sy, char d);
+extern void XI(char root, const char *title, const char *subtitle, int height, int width, int sx, int sy, char d);
 extern void Clean(char d);
 
 extern void RegionFill(int x, int y, int h, int w, unsigned long color, char d);

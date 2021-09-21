@@ -1,8 +1,7 @@
 #include <stdlib.h>
-#include <stdbool.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <X11/Xos.h>
+// #include <X11/Xos.h>
 #include <X11/cursorfont.h>
 
 struct cxt {
@@ -40,13 +39,13 @@ return b + (g<<8) + (r<<16);
 
 struct cache {
 char t;
-char txt[2];
 char b;
+int txt;
 int x;
 int y;
 };
 
-void XI(bool root, const char *title, 
+void XI(char root, const char *title, 
 					   const char *subtitle, 
 					   int height, int width,
 					   int sx, int sy, char d) {
@@ -84,15 +83,19 @@ XSetForeground(context[d].dis, context[d].gc, color);
 XDrawRectangle(context[d].dis, context[d].win, context[d].gc, x-1, y-1, h, w);
 }
 
-void Eve(struct cache *cc, char d){
-bool kill = 0; 
+void Point(int x, int y, unsigned long color, char d) {
+XSetForeground(context[d].dis, context[d].gc, color);
+XDrawPoint(context[d].dis, context[d].win, context[d].gc, x, y);
+}
 
-cc->t = 0;
-cc->txt[0] = 0;
-cc->txt[1] = 0;
-cc->b = 0;
-cc->x = 0;
-cc->y = 0;
+void Eve(struct cache *cc, char d){
+char kill = 0; 
+
+cc->t =   0;
+cc->b =   0;
+cc->txt = 0;
+cc->x =   0;
+cc->y =   0;
 
 XNextEvent(context[d].dis, &context[d].event);
 	if (context[d].event.type==Expose) {
@@ -104,13 +107,13 @@ XNextEvent(context[d].dis, &context[d].event);
         cc->x = context[d].event.xbutton.x;
         cc->y = context[d].event.xbutton.y;
         }
-        if (context[d].event.type==KeyPress&&XLookupString(&context[d].event.xkey,context[d].text,255,&context[d].key,0)==1) {
+        if (context[d].event.type==2) {
+	XLookupString(&context[d].event.xkey,context[d].text,255,&context[d].key,0);
                 if (context[d].text[0]==27) { // failsafe quit
                         kill = 1;
                 } else {
                 cc->t = 1;
-                cc->txt[0] = context[d].text[0];
-                cc->txt[1] = context[d].text[1];
+                cc->txt = context[d].key;
                 }
         }
 	if (kill){
@@ -130,6 +133,28 @@ XWindowAttributes attr;
 XGetWindowAttributes(context[d].dis, context[d].win, &attr);
 return attr.height;
 }
+
+/*struct options {
+float t;
+int x;
+int y;
+char d;
+}
+
+int white(struct options i) {
+XSetForeground(context[i.d].dis, context[i.d].gc, color);
+XDrawPoint(context[i.d].dis, context[i.d].win, context[i.d].gc, x, y);
+}
+
+int black(struct options i) {
+XSetForeground(context[i.d].dis, context[i.d].gc, color);
+XDrawPoint(context[i.d].dis, context[i.d].win, context[i.d].gc, x, y);
+} 
+
+come back to this
+use void p = (void)function(struct options input);
+to garner input from any function and return a color value
+*/ 
 
 int Pend(char d){
 return XPending(context[d].dis);
