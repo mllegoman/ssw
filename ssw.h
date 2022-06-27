@@ -7,6 +7,8 @@ char b;
 int txt;
 int x;
 int y;
+int w;
+int h;
 };
 
 extern unsigned long LHEX(char v[7]); /* These could be regular longs */
@@ -21,6 +23,7 @@ extern void RegionScarf(int x, int y, int h, int w, unsigned long color, char d)
 extern void Eve(struct cache *cc, char d);
 extern unsigned int WW(char d);
 extern unsigned int WH(char d);
+struct cache Obstruct(char d);
 
 extern int Pend(char d);
 

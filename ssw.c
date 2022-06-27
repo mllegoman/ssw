@@ -43,6 +43,8 @@ char b;
 int txt;
 int x;
 int y;
+int w;
+int h;
 };
 
 void XI(char root, const char *title, 
@@ -132,6 +134,46 @@ unsigned int WH(char d) {
 XWindowAttributes attr;
 XGetWindowAttributes(context[d].dis, context[d].win, &attr);
 return attr.height;
+}
+
+struct cache Obstruct(char d) {
+struct cache ret;
+Window *root, *rel;
+int *throwaway[5];
+XWindowAttributes attr;
+	if (XQueryPointer(context[d].dis, context[d].win, rel/* root */, rel, throwaway[0], 
+									throwaway[1], 
+									throwaway[2], 
+									throwaway[3], 
+									throwaway[4])) {
+		if (rel) {
+		XGetWindowAttributes(context[d].dis, *rel, &attr);
+		ret.t = 1;
+		ret.b = 0;
+		ret.txt = 0;
+		ret.x = attr.x;
+		ret.y = attr.y;
+		ret.w = attr.width + 2*attr.border_width;
+		ret.h = attr.height + 2*attr.border_width;
+		} else {
+		ret.t = 0;
+		ret.b = 0;
+		ret.txt = 0;
+		ret.x = 0;
+		ret.y = 0;
+		ret.w = 0;
+		ret.h = 0;
+		}
+	} else {
+	ret.t = 0;
+	ret.b = 0;
+	ret.txt = 0;
+	ret.x = 0;
+	ret.y = 0;
+	ret.w = 0;
+	ret.h = 0;
+	}
+return ret;
 }
 
 /*struct options {
