@@ -23,7 +23,11 @@ extern void RegionScarf(int x, int y, int h, int w, unsigned long color, char d)
 extern void Eve(struct cache *cc, char d);
 extern unsigned int WW(char d);
 extern unsigned int WH(char d);
-struct cache Obstruct(char d);
+
+extern int Accommodate(void);
+extern void Obstruct(struct cache *boxes, char d);
+extern void Latch(int list_position, char d);
+extern void Force(struct chache options, char d);
 
 extern int Pend(char d);
 

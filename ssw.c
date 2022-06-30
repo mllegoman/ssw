@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-// #include <X11/Xos.h>
 #include <X11/cursorfont.h>
 
 struct cxt {
@@ -136,67 +135,274 @@ XGetWindowAttributes(context[d].dis, context[d].win, &attr);
 return attr.height;
 }
 
-struct cache Obstruct(char d) {
-struct cache ret;
-Window *root, *rel;
-int *throwaway[5];
-XWindowAttributes attr;
-	if (XQueryPointer(context[d].dis, context[d].win, rel/* root */, rel, throwaway[0], 
-									throwaway[1], 
-									throwaway[2], 
-									throwaway[3], 
-									throwaway[4])) {
-		if (rel) {
-		XGetWindowAttributes(context[d].dis, *rel, &attr);
-		ret.t = 1;
-		ret.b = 0;
-		ret.txt = 0;
-		ret.x = attr.x;
-		ret.y = attr.y;
-		ret.w = attr.width + 2*attr.border_width;
-		ret.h = attr.height + 2*attr.border_width;
-		} else {
-		ret.t = 0;
-		ret.b = 0;
-		ret.txt = 0;
-		ret.x = 0;
-		ret.y = 0;
-		ret.w = 0;
-		ret.h = 0;
-		}
+int Accommodating() {
+int ret;
+Display *dis = XOpenDisplay((char *)0);
+Window *ignore;
+Window nore[2];
+XQueryTree(dis, DefaultRootWindow(dis), &nore[0], &nore[1], &ignore, &ret);
+XCloseDisplay(dis);
+return ret + 1;
+}
+
+void Obstruct(struct cache *boxes, char d) {
+Window *list;
+int x[4], y[4], mx[4], my[4];
+Window ignore[2];
+XWindowAttributes attr[2];
+int i, k, use_n, num;
+XGetWindowAttributes(context[d].dis, context[d].win, &attr[0]);
+mx[0] = attr[0].x;
+mx[1] = attr[0].x + attr[1].width;
+mx[2] = attr[0].x + attr[1].width;
+mx[3] = attr[0].x;
+my[0] = attr[0].y;
+my[1] = attr[0].y;
+my[2] = attr[0].y + attr[0].height;
+my[3] = attr[0].y + attr[0].height;
+XQueryTree(context[d].dis, DefaultRootWindow(context[d].dis), &ignore[0], &ignore[1], &list, &num);
+
+int use[num];
+use_n = 0;
+i = 0;
+	if (context[d].win==DefaultRootWindow(context[d].dis)) {
+	i = 0;
 	} else {
-	ret.t = 0;
-	ret.b = 0;
-	ret.txt = 0;
-	ret.x = 0;
-	ret.y = 0;
-	ret.w = 0;
-	ret.h = 0;
+		while (list[i]!=context[d].win) {
+		i++;
+		}
 	}
-return ret;
+	while (i < num) {
+	XGetWindowAttributes(context[d].dis, list[i], &attr[1]);
+		if (attr[1].map_state==2) {
+		use[use_n++] = i;
+		}
+	i++;
+	}
+	if (!use_n) {
+	boxes[0].t = 0;
+	return;
+	}
+i = 0;
+	while (i < use_n) {
+	XGetWindowAttributes(context[d].dis, list[use[i]], &attr[1]);
+	x[0] = attr[1].x;
+	x[1] = attr[1].x + attr[1].width;
+	x[2] = attr[1].x + attr[1].width;
+	x[3] = attr[1].x;
+	y[0] = attr[1].y;
+	y[1] = attr[1].y;
+	y[2] = attr[1].y + attr[1].height;
+	y[3] = attr[1].y + attr[1].height;
+		while (!(x[k] > mx[0]&&y[k] > my[0]&&x[k] < mx[3]&&y[k] < my[3])) { 
+			// check if each point is inside (x,y)(x+width,y)(x+width,y+height)(x,y+height)
+		k++;
+		}
+		if (k==4) {
+		use_n--;
+		k = i;
+			while (k < use_n) {
+			use[k] = use[k+1];
+			}
+		}
+	i++;
+	}
+	if (!use_n) {
+	boxes[0].t = 0;
+	return;
+	}
+
+i = 0;
+	while (i < use_n) { // redo with the final knowledge of how many obstructing windows there are
+	XGetWindowAttributes(context[d].dis, list[use[i]], &attr[1]);
+	x[0] = attr[1].x;
+	x[1] = attr[1].x + attr[1].width;
+	x[2] = attr[1].x + attr[1].width;
+	x[3] = attr[1].x;
+	y[0] = attr[1].y;
+	y[1] = attr[1].y;
+	y[2] = attr[1].y + attr[1].height;
+	y[3] = attr[1].y + attr[1].height;
+		if (x[0] - 1 < mx[0]&&y[0] - 1 < my[0]&&x[2] + 1 > mx[2]&&y[2] + 1 > my[2]) { // outside window
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = 0;
+		boxes[i].w = mx[2] - mx[0];
+		boxes[i].h = my[3] - my[0];
+		}
+
+		if (x[0] > mx[0]&&y[0] > my[0]&&x[2] < mx[2]&&y[2] < my[2]) { // inside window
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = y[0] - my[0];
+		boxes[i].w = x[2] - x[0];
+		boxes[i].h = y[2] - y[0];
+		}
+
+		if (x[0] < mx[0]&&y[0] < my[0]&&x[2] > mx[0]&&y[2] > my[0]&&
+		    x[2] < mx[2]&&y[2] < my[2]) { // top left corner
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = 0;
+		boxes[i].w = x[2] - mx[2];
+		boxes[i].h = y[2] - my[2];
+		}
+
+		if (x[1] > mx[1]&&y[1] < my[1]&&x[3] > mx[0]&&y[3] > my[0]&&
+                    x[3] < mx[2]&&y[3] < my[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = 0;
+		boxes[i].w = mx[0] - x[3];
+		boxes[i].h = y[3] - my[0];
+		}
+
+		if (x[2] > mx[2]&&y[2] > my[2]&&x[0] > mx[0]&&y[0] > my[0]&&
+                    x[0] < mx[2]&&y[0] < my[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = y[0] - my[0];
+		boxes[i].w = mx[2] - x[0];
+		boxes[i].h = my[2] - y[0];
+		}
+
+		if (x[3] < mx[3]&&y[3] > my[3]&&x[1] > mx[0]&&y[1] > my[0]&&
+                    x[1] < mx[2]&&y[1] < my[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = x[0] - mx[0];
+		boxes[i].w = x[2] - mx[0];
+		boxes[i].h = my[2] - y[0];
+		}
+
+		if (x[0] > mx[0]&&x[0] < mx[1]&&y[0] < my[0]&&x[2] > mx[0]&&
+		    y[2] > my[0]&&x[2] < mx[2]&&y[2] < my[2]) { // partial segments
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = 0;
+		boxes[i].w = x[2] - x[0];
+		boxes[i].h = y[2] - my[0];
+		}
+
+		if (x[0] > mx[0]&&y[0] > my[0]&&x[0] < mx[2]&&y[0] < my[2]&&
+		    x[2] > mx[1]&&y[2] > my[1]&&y[2] < my[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = y[0] - my[0];
+		boxes[i].w = mx[2] - x[0];
+		boxes[i].h = y[2] - y[0];
+		}
+
+		if (x[0] > mx[0]&&y[0] > my[0]&&x[0] < mx[2]&&y[0] < my[2]&&
+		    x[2] > mx[3]&&y[2] > my[3]&&x[2] < mx[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = y[0] - my[0];
+		boxes[i].w = x[2] - x[0];
+		boxes[i].h = my[2] - y[0];
+		}
+
+		if (x[2] > mx[0]&&y[2] > my[0]&&x[2] < mx[2]&&y[2] < my[2]&&
+		    x[0] < mx[0]&&y[0] > my[0]&&y[0] < my[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = y[1] - my[0];
+		boxes[i].w = x[1] - mx[0];
+		boxes[i].h = y[2] - y[0];
+		}
+
+		if (x[0] > mx[0]&&y[0] < my[0]&&x[2] > mx[0]&&y[2] > my[2]&&x[2] < mx[2]) { // vert
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = 0;
+		boxes[i].w = x[2] - x[0];
+		boxes[i].h = my[2] - my[0];
+		}
+		
+		if (x[0] < mx[0]&&y[0] > my[0]&&y[2] > my[0]&&x[2] > mx[2]&&y[2] < my[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = y[0] - my[0];
+		boxes[i].w = mx[2] - mx[0];
+		boxes[i].h = y[2] - y[0];
+		}
+
+		if (x[0] < mx[0]&&y[0] < my[0]&&x[2] > mx[2]&&y[2] > my[0]&&y[2] < my[2]) { // segment annihilators
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = 0;
+		boxes[i].w = mx[2] - mx[0];
+		boxes[i].h = y[2] - my[0];
+		}
+
+		if (x[1] > mx[1]&&y[1] < my[1]&&y[3] > my[3]&&x[3] > mx[3]&&x[3] < mx[1]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = x[0] - mx[0];
+		boxes[i].y = 0;
+		boxes[i].w = mx[2] - x[0];
+		boxes[i].h = my[2] - my[0];
+		}
+
+		if (x[2] > mx[2]&&y[2] > my[2]&&x[0] < mx[0]&&y[0] > my[0]&&y[0] < my[2]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = my[2] - my[0];
+		boxes[i].w = mx[2] - mx[0];
+		boxes[i].h = my[2] - y[0];
+		}
+
+		if (x[3] < mx[3]&&y[3] > my[3]&&y[1] < my[1]&&x[1] < mx[1]&&x[1] > mx[3]) {
+		boxes[i].t = use_n;
+		boxes[i].b = 0;
+		boxes[i].txt = 0;
+		boxes[i].x = 0;
+		boxes[i].y = 0;
+		boxes[i].w = x[2] - mx[0];
+		boxes[i].h = my[2] - my[0];
+		}
+
+	i++;
+	}
+return;
 }
 
-/*struct options {
-float t;
-int x;
-int y;
-char d;
+void Latch (int list_position, char d) {
+
 }
 
-int white(struct options i) {
-XSetForeground(context[i.d].dis, context[i.d].gc, color);
-XDrawPoint(context[i.d].dis, context[i.d].win, context[i.d].gc, x, y);
+void Force (struct cache options, char d) {
+
 }
-
-int black(struct options i) {
-XSetForeground(context[i.d].dis, context[i.d].gc, color);
-XDrawPoint(context[i.d].dis, context[i.d].win, context[i.d].gc, x, y);
-} 
-
-come back to this
-use void p = (void)function(struct options input);
-to garner input from any function and return a color value
-*/ 
 
 int Pend(char d){
 return XPending(context[d].dis);
